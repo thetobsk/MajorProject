@@ -1,9 +1,11 @@
 ## PRC WINDOW ##
 
 import maya.cmds as cmds
-
 def HQLQtoggle():
-    print "hello"
+    if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
+        cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
+    else:                                                        # If un-ticked
+        cmds.radioButtonGrp(HQLQOption, edit=True, enable=False) # Disable
 
 PRCWindow = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
 
@@ -11,15 +13,15 @@ cmds.columnLayout(cw=400)
 cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this scene to the Render Farm:\n")
 
 cmds.rowColumnLayout(numberOfColumns = 1, columnWidth=[(1, 300)], rowSpacing=[(1,10)])
-cmds.checkBox(label="Add Maya Filepath Metadata")
-cmds.checkBox(label="Hide Render Assistants")
-cmds.checkBox(label="Ensure Render Camera Selected")
-cmds.checkBox(label="Enable Essential Render Settings")
-cmds.checkBox(label="Missing Texture and File Check")
-cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
+cmds.checkBox(label="Add Maya Filepath Metadata", v=1)
+cmds.checkBox(label="Hide Render Assistants", v=1)
+cmds.checkBox(label="Ensure Render Camera Selected", v=1)
+cmds.checkBox(label="Enable Essential Render Settings", v=1)
+cmds.checkBox(label="Missing Texture and File Check", v=1)
+enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
 
 cmds.columnLayout(cw=100)
-cmds.radioButtonGrp(nrb=2, label1="LQ", an1="Settings for a Low Quality render.", label2="HQ", an2="Settings for a High Quality render.")
+HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
 
 cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
 cmds.button(label="< Cancel", w=80)
