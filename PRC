@@ -29,3 +29,37 @@ cmds.button(label="Skip", w=80)
 cmds.button(label="Submit >", w=80)
 
 cmds.showWindow(PRCWindow)
+
+
+--------------------
+## MISSING FILE CHECK ##
+
+import maya.cmds as cmds
+import os
+
+def texStatus():
+    
+    texDirs = []
+    fileError = []
+    fileList = cmds.ls(type = "file")
+    
+    if len(fileList) == 0:
+        print "FILE-CHECK-ERROR: No files found linked to this scene!",
+        return 0
+    else:
+        print "Details of the files linked to this scene:\n",
+        for f in fileList:
+            fPath = cmds.getAttr(f + ".fileTextureName")
+            dirPath = os.path.split(fPath)[0]   
+            print "- " + fPath
+            
+            if not os.path.exists(fPath):
+                fileError.append(f)
+                
+    if not len(fileError) == 0:
+        print "\nSome of your files have errors!"
+        for n in fileError:
+            print "- " + n
+            cmds.select(n, add = True)
+                
+texStatus()
