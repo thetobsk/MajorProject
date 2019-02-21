@@ -116,3 +116,60 @@ def hideAssistants():
         return 0 
         
 hideAssistants()
+
+
+---------------------------------
+### ADDS METADATA OF SAVED NAME TO THE MAYA FILE METADATA SLOT
+
+import pymel
+
+def addFilePathMetaData():
+    
+    # create the metadata to add
+    nodeName = "defaultArnoldDriver.customAttributes"
+    filePath = cmds.file(query = True, sceneName = True)
+    mayaFile = {"type":"STRING","name":"mayaFile","value": filePath}
+    
+    # if there isn't already this attribute
+    def addAttribute(nodeName, value):
+        nextIndex = 0
+        if cmds.getAttr(nodeName, multiIndices= True):
+            nextIndex = cmds.getAttr(nodeName, multiIndices= True)[-1] + 1
+        cmds.setAttr(nodeName+'['+str(nextIndex)+']', "%s %s %s" % (value["type"],value["name"],value["value"]), type="string")
+    
+    # if the attribute already exists
+    def changeAttribute(nodename, value):
+        for nodeNameIndex,i in enumerate(pymel.core.getAttr(nodeName)):
+            j= i.split(" ")
+            if len(j)>1:
+                if j[1] == 'mayaFile':
+                    cmds.setAttr(nodeName + '[' + str(nodeNameIndex) + ']', "%s %s %s" % (value["type"],value["name"],value["value"]), type="string")
+                    break
+    
+    attributes=[]
+    for i in pymel.core.getAttr(nodeName):
+        j= i.split(" ")
+        if len(j)>1:
+            attributes.append(j[1])
+        
+    if "mayaFile" in attributes:
+        try:
+            changeAttribute(nodeName,mayaFile)
+            metaDataAction = "PRC-METADATA: MayaFile attribute existed, overwrote with new filename.\n"
+            return 1
+        except:
+            metaDataAction = "PRC-METADATA: Error!\n"
+            return 0
+                
+    else:
+        try:
+            addAttribute(nodeName,mayaFile)
+            metaDataAction = "PRC-MayaFile: MayaFile attribute did not exist. Added it for you.\n"
+            return 1
+        except:
+            metaDataAction = "PRC-METADATA: Error!\n"
+            return 0            
+     
+    print metaDataAction,
+    
+addFilePathMetaData()
