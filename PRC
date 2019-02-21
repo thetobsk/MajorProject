@@ -95,3 +95,24 @@ def checkRenderCamera():
         return 1
         
 checkRenderCamera()
+
+------------------------------
+### HIDE ASSISTANTS
+
+def hideAssistants():
+    
+    assistants = cmds.ls("::Assistants", r=True)
+    try:
+        if assistants:
+            cmds.select(assistants)
+            cmds.hide(assistants)
+            print "PRC-HideAssistants: Finished hiding the Assistants.\n",
+            return 1
+        else:
+            print "PRC-HideAssistants: No Assistants Found!\n",
+            return 1
+    except:
+        print "PRC-HideAssistants: Error!\n",
+        return 0 
+        
+hideAssistants()
