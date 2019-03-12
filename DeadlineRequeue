@@ -1,0 +1,30 @@
+## REQUEUE SELECTED TASKS AS A PRIORITY TEST ##
+"""Issues so far: Priority isn't used :-("""
+
+from Deadline.Scripting import MonitorUtils as mu
+import Deadline
+
+def __main__( *args ):
+    print 'Running TobyTools Requeue Script...’	
+    
+    job = mu.GetSelectedJobs()[0]
+    tasks = mu.GetSelectedTasks()
+    slaveName = "pe15tts“
+    chunkSize = 1
+    submitSuspended = False
+    
+    frameList = str(mu.GetSelectedTasks()[0].get_TaskFrameList()[0])   
+    print 'Job:', job, type(job)
+    print 'Frame List:', frameList, type(frameList)
+    print 'Chunk Size', chunkSize
+    print 'Submit Suspended:', submitSuspended    
+    myNewJob = Deadline.Scripting.RepositoryUtils.ResubmitJob(job, frameList, 										   chunkSize, submitSuspended)     
+     
+    # Complete the old task:
+    Deadline.Scripting.RepositoryUtils.CompleteTasks(job, tasks, slaveName)     
+      
+    # Set new job to 99 priority - """redundant""“
+    myNewJob.set_JobPriority('99’)
+    print 'Job Priority: ‘, myNewJob.JobPriority    
+    
+    print 'Finished running TobyTools Requeue Script!’
