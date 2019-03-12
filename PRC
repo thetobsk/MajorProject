@@ -28,6 +28,7 @@ def addFilePathMetaData():
     
     # if the attribute already exists
     def changeAttribute(nodename, value):
+        print "UPDATING ATTRIBUTE!" ## ADDED
         for nodeNameIndex,i in enumerate(pymel.core.getAttr(nodeName)):
             j= i.split(" ")
             if len(j)>1:
@@ -37,13 +38,15 @@ def addFilePathMetaData():
     
     attributes=[]
     for i in pymel.core.getAttr(nodeName):
+        print i ## ADDED
         j= i.split(" ")
         if len(j)>1:
             attributes.append(j[1])
         
     if "mayaFile" in attributes:
+        print "MAYAFILE ALREADY THERE!" ## ADDED
         try:
-            changeAttribute(nodeName,mayaFile)
+            changeAttribute(nodeName, mayaFile)
             metaDataAction = "PRC-METADATA: MayaFile attribute existed, overwrote with new filename.\n"
             return 1
         except:
@@ -51,8 +54,9 @@ def addFilePathMetaData():
             return 0
                 
     else:
+        print "MAYAFILE NOT THERE!" ## ADDED
         try:
-            addAttribute(nodeName,mayaFile)
+            addAttribute(nodeName, mayaFile)
             metaDataAction = "PRC-MayaFile: MayaFile attribute did not exist. Added it for you.\n"
             return 1
         except:
@@ -173,12 +177,12 @@ def setHQ():
         #Arnold AA settings
         cmds.setAttr('defaultArnoldRenderOptions.AASamples', 8)
         cmds.setAttr('defaultArnoldRenderOptions.GIDiffuseSamples', 4)
-        cmds.setAttr('defaultArnoldRenderOptions.GISpecularSamples', 4)
-        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionSamples', 4)
+        cmds.setAttr('defaultArnoldRenderOptions.GIGlossySamples', 4)
+        cmds.setAttr('defaultArnoldRenderOptions.GIRefractionSamples', 4)
         cmds.setAttr('defaultArnoldRenderOptions.GISssSamples', 4)    
         cmds.setAttr('defaultArnoldRenderOptions.GIVolumeSamples', 0)    
-        cmds.setAttr('defaultArnoldRenderOptions.GISpecularDepth', 1)
-        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionDepth', 4)        
+        cmds.setAttr('defaultArnoldRenderOptions.GIGlossyDepth', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GIRefractionDepth', 4)        
 
         #Low light threshold
         cmds.setAttr('defaultArnoldRenderOptions.lowLightThreshold', 0.015)
@@ -201,12 +205,12 @@ def setLQ():
         #Arnold AA settings
         cmds.setAttr('defaultArnoldRenderOptions.AASamples', 2)
         cmds.setAttr('defaultArnoldRenderOptions.GIDiffuseSamples', 1)
-        cmds.setAttr('defaultArnoldRenderOptions.GISpecularSamples', 1)
-        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionSamples', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GIGlossySamples', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GIRefractionSamples', 1)
         cmds.setAttr('defaultArnoldRenderOptions.GISssSamples', 1)    
         cmds.setAttr('defaultArnoldRenderOptions.GIVolumeSamples', 0)    
-        cmds.setAttr('defaultArnoldRenderOptions.GISpecularDepth', 1)
-        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionDepth', 4)        
+        cmds.setAttr('defaultArnoldRenderOptions.GIGlossyDepth', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GIRefractionDepth', 4)        
 
         #Low light threshold
         cmds.setAttr('defaultArnoldRenderOptions.lowLightThreshold', 0.015)
@@ -220,6 +224,7 @@ def setLQ():
 # SUBMIT TO FARM
 
 def submitToFarm(*args):
+    cmds.deleteUI(PRCWindow, window=True)
     print "No changes made to your scene. Submitting to the render farm now...\n",
     try:
         maya.mel.eval('SubmitJobToDeadline')
@@ -240,27 +245,27 @@ def closeWindow(*args):
 def getSelectedActions(*args):
     checkFails = []
     if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
-        #addFilePathMetaData()
         print "PRC Metadata was selected"
+        addFilePathMetaData()
     if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
-        #hideAssistants()
         print "PRC Hide Assistants was selected"
+        hideAssistants()
     if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
-        #checkRenderCamera()
         print "PRC Render Camera was selected"
+        checkRenderCamera()
     if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
-        #essentialSettings()
         print "PRC Essential Settings was selected"
+        essentialSettings()
     if cmds.checkBox(PRCTextureCheck, q=1, v=1) == True:
-        #texStatus()
         print "PRC Texture and File Check was selected"
+        #texStatus()
     if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
         if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
-            #setLQ()
             print "LQ Settings were selected"
+            setLQ()
         elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
-            #setHQ()
             print "HQ Settings were selected"
+            setHQ()
         else: # Nothing is selected
             print "ERROR: Ensure either HQ or LQ is selected!"
             cmds.confirmDialog(m="Ensure that you pick either HQ or LQ!", t="PRC", b="Silly Me")
