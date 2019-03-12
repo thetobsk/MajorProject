@@ -1,173 +1,18 @@
-## PRC WINDOW ##
+###############################
+###############################
+###                         ###
+###    PRE-RENDER CHECKS    ###
+###                         ###
+###############################
+###############################
 
 import maya.cmds as cmds
 
-def submitToFarm(*args):
-    print "No changes made to your scene. Submitting to the render farm now...\n",
-    try:
-        maya.mel.eval('SubmitJobToDeadline')
-        print "Your scene has been sent to the render farm - thanks for using PreRenderChecks!",
-    except:
-        maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
-
-def closeWindow(*args):
-    cmds.deleteUI(PRCWindow, window=True)
-    print "PRC: Cancelled - no changes were made to your scene",
-
-def getSelectedActions(*args):
-    checkFails = []
-    print "Submit button pushed"
-    if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
-        #addFilePathMetaData()
-        print "PRC Metadata was selected"
-    if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
-        #hideAssistants()
-        print "PRC Hide Assistants was selected"
-    if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
-        #checkRenderCamera()
-        print "PRC Render Camera was selected"
-    if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
-        #essentialSettings()
-        print "PRC Essential Settings was selected"
-    if cmds.checkBox(PRCTextureCheck, q=1, v=1) == True:
-        #texStatus()
-        print "PRC Texture and File Check was selected"
-    if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
-        if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
-            #setLQ()
-            print "LQ Settings were selected"
-        elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
-            #setHQ()
-            print "HQ Settings were selected"
-        else: # Nothing is selected
-            print "ERROR: Ensure either HQ or LQ is selected!"
-
-
-############# START HERE #################
-import maya.cmds as cmds
-def HQLQtoggle():
-    if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
-        cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
-    else:                                                        # If un-ticked
-        cmds.radioButtonGrp(HQLQOption, edit=True, enable=False) # Disable
-
-PRCWindow = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
-
-cmds.columnLayout(cw=400)
-cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this 	scene to the Render Farm:\n")
-
-cmds.rowColumnLayout(numberOfColumns = 1, columnWidth=[(1, 300)], rowSpacing=[(1,10)])
-PRCMetadata = cmds.checkBox(label="Add Maya Filepath Metadata", v=1)
-PRCHideAssistants = cmds.checkBox(label="Hide Render Assistants", v=1)
-PRCRenderCamera = cmds.checkBox(label="Ensure Render Camera Selected", v=1)
-PRCEssentialSettings = cmds.checkBox(label="Enable Essential Render Settings", v=1)
-PRCTextureCheck = cmds.checkBox(label="Missing Texture and File Check", v=1)
-enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", 			      	onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
-
-cmds.columnLayout(cw=100)
-HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
-
-cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
-PRCCancel = cmds.button(label="< Cancel", w=80, command=closeWindow)
-PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarm)
-PRCSubmit = cmds.button(label="Submit >", w=80, command=getSelectedActions)
-
-cmds.showWindow(PRCWindow)
-
-
---------------------
-## MISSING FILE CHECK ##
-
-import maya.cmds as cmds
-import os
-
-def texStatus():
-    
-    texDirs = []
-    fileError = []
-    fileList = cmds.ls(type = "file")
-    
-    if len(fileList) == 0:
-        print "FILE-CHECK-ERROR: No files found linked to this scene!",
-        return 0
-    else:
-        print "Details of the files linked to this scene:\n",
-        for f in fileList:
-            fPath = cmds.getAttr(f + ".fileTextureName")
-            dirPath = os.path.split(fPath)[0]   
-            print "- " + fPath
-            
-            if not os.path.exists(fPath):
-                fileError.append(f)
-                
-    if not len(fileError) == 0:
-        print "\nSome of your files have errors!"
-        for n in fileError:
-            print "- " + n
-            cmds.select(n, add = True)
-                
-texStatus()
-
-
--------------------------------
-## RENDER CAMERA CHECK ##
-
-def checkRenderCamera():
-    renderableList=[]
-    for x in cmds.ls(typ='camera',l=True):
-        if cmds.getAttr(x+'.renderable'):
-            renderableList.append(x)
-    ll=len(renderableList)
-    if ll==0:
-        print "PRC-RenderCamera: There is no renderable camera!\n",
-        return 0
-    if ll>1:
-        print "PRC-RenderCamera: More than one render camera detected!\n",
-        cmds.confirmDialog(m="There is more than one camera selected to render!\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", t="PRC Alert")
-        return 1
-    else: # if ll==1
-        camSelect = []
-        camSelect = renderableList[0].split("|")
-        defaultCamList = ["persp", "top", "front", "side", "back", "right", "left", "bottom"]
-        
-        for cam in defaultCamList:
-            if cam == camSelect[1]:
-                cmds.confirmDialog(m="Render Camera: " + camSelect[1] + "\nThis looks like one of the default cameras.\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", ma="center", t="PRC Alert")
-                print "PRC-RenderCamera: Looks like you've got a default camera selected to render:", camSelect[1], "\n",
-                return 1
-        print "PRC-RenderCamera: Looks good, your selected camera is:", camSelect[1], "\n",
-        return 1
-        
-checkRenderCamera()
-
-------------------------------
-### HIDE ASSISTANTS
-
-def hideAssistants():
-    
-    assistants = cmds.ls("::Assistants", r=True)
-    try:
-        if assistants:
-            cmds.select(assistants)
-            cmds.hide(assistants)
-            print "PRC-HideAssistants: Finished hiding the Assistants.\n",
-            return 1
-        else:
-            print "PRC-HideAssistants: No Assistants Found!\n",
-            return 1
-    except:
-        print "PRC-HideAssistants: Error!\n",
-        return 0 
-        
-hideAssistants()
-
-
----------------------------------
-### ADDS METADATA OF SAVED NAME TO THE MAYA FILE METADATA SLOT
-
-import pymel
+#-----------------------------#
+# ADD METADATA
 
 def addFilePathMetaData():
+    import pymel
     
     # create the metadata to add
     nodeName = "defaultArnoldDriver.customAttributes"
@@ -216,4 +61,240 @@ def addFilePathMetaData():
      
     print metaDataAction,
     
-addFilePathMetaData()
+#-----------------------------#
+# HIDE ASSISTANTS
+
+def hideAssistants():
+    
+    assistants = cmds.ls("::Assistants", r=True)
+    try:
+        if assistants:
+            cmds.select(assistants)
+            cmds.hide(assistants)
+            print "PRC-HideAssistants: Finished hiding the Assistants.\n",
+            return 1
+        else:
+            print "PRC-HideAssistants: No Assistants Found!\n",
+            return 1
+    except:
+        print "PRC-HideAssistants: Error!\n",
+        return 0 
+
+#-----------------------------#
+# RENDER CAMERA CHECK
+
+def checkRenderCamera():
+    renderableList=[]
+    for x in cmds.ls(typ='camera',l=True):
+        if cmds.getAttr(x+'.renderable'):
+            renderableList.append(x)
+    ll=len(renderableList)
+    if ll==0:
+        print "PRC-RenderCamera: There is no renderable camera!\n",
+        return 0
+    if ll>1:
+        print "PRC-RenderCamera: More than one render camera detected!\n",
+        cmds.confirmDialog(m="There is more than one camera selected to render!\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", t="PRC Alert")
+        return 1
+    else: # if ll==1
+        camSelect = []
+        camSelect = renderableList[0].split("|")
+        defaultCamList = ["persp", "top", "front", "side", "back", "right", "left", "bottom"]
+        
+        for cam in defaultCamList:
+            if cam == camSelect[1]:
+                cmds.confirmDialog(m="Render Camera: " + camSelect[1] + "\nThis looks like one of the default cameras.\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", ma="center", t="PRC Alert")
+                print "PRC-RenderCamera: Looks like you've got a default camera selected to render:", camSelect[1], "\n",
+                return 1
+        print "PRC-RenderCamera: Looks good, your selected camera is:", camSelect[1], "\n",
+        return 1
+
+#-----------------------------#
+# ESSENTIAL SETTINGS
+
+def essentialSettings():
+    try:
+        cmds.setAttr("defaultArnoldDriver.autocrop", 1)
+        cmds.setAttr("defaultArnoldRenderOptions.abortOnLicenseFail", 1)
+        cmds.setAttr("defaultRenderGlobals.currentRenderer", "arnold", type="string")
+        cmds.setAttr("defaultRenderGlobals.outFormatControl", 0)
+        cmds.setAttr("defaultRenderGlobals.animation", 1)
+        cmds.setAttr("defaultRenderGlobals.putFrameBeforeExt", 1)
+        cmds.setAttr("defaultRenderGlobals.extensionPadding", 4)
+        cmds.setAttr("defaultRenderGlobals.periodInExt", 1)
+        print "PRC-RenderSettings: Completed\n",
+        return 1
+    except:
+        print "PRC-RenderSettings: Error!\n",
+        return 0
+
+#-----------------------------#
+# TEXTURE CHECK
+
+def texStatus():
+    import maya.cmds as cmds
+    import os
+
+    texDirs = []
+    fileError = []
+    fileList = cmds.ls(type = "file")
+    
+    if len(fileList) == 0:
+        print "FILE-CHECK-ERROR: No files found linked to this scene!",
+        return 0
+    else:
+        print "Details of the files linked to this scene:\n",
+        for f in fileList:
+            fPath = cmds.getAttr(f + ".fileTextureName")
+            dirPath = os.path.split(fPath)[0]   
+            print "- " + fPath
+            
+            if not os.path.exists(fPath):
+                fileError.append(f)
+                
+    if not len(fileError) == 0:
+        print "\nSome of your files have errors!"
+        for n in fileError:
+            print "- " + n
+            cmds.select(n, add = True)
+
+#-----------------------------#
+# HQ SETTINGS
+
+def setHQ():
+    try:
+        #Turn on Disp + Subviv, blur
+        cmds.setAttr('defaultArnoldRenderOptions.maxSubdivisions', 3)
+        cmds.setAttr('defaultArnoldRenderOptions.ignoreSubdivision', 0)
+        cmds.setAttr('defaultArnoldRenderOptions.ignoreDisplacement', 0)        
+        cmds.setAttr('defaultArnoldRenderOptions.motion_blur_enable', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.ignoreBump', 0)
+        
+        #Arnold AA settings
+        cmds.setAttr('defaultArnoldRenderOptions.AASamples', 8)
+        cmds.setAttr('defaultArnoldRenderOptions.GIDiffuseSamples', 4)
+        cmds.setAttr('defaultArnoldRenderOptions.GISpecularSamples', 4)
+        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionSamples', 4)
+        cmds.setAttr('defaultArnoldRenderOptions.GISssSamples', 4)    
+        cmds.setAttr('defaultArnoldRenderOptions.GIVolumeSamples', 0)    
+        cmds.setAttr('defaultArnoldRenderOptions.GISpecularDepth', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionDepth', 4)        
+
+        #Low light threshold
+        cmds.setAttr('defaultArnoldRenderOptions.lowLightThreshold', 0.015)
+        print "PRC-HQRender: Your scene has been set up for a HQ Render!\n",
+        return 1
+    except:
+        print "PRC-HQRender: Error!\n",
+        return 0
+
+#-----------------------------#
+# LQ SETTINGS
+
+def setLQ():
+    try:
+        #Turn on Disp + Subviv, blur
+        cmds.setAttr('defaultArnoldRenderOptions.maxSubdivisions', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.motion_blur_enable', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.ignoreBump', 0)
+        
+        #Arnold AA settings
+        cmds.setAttr('defaultArnoldRenderOptions.AASamples', 2)
+        cmds.setAttr('defaultArnoldRenderOptions.GIDiffuseSamples', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GISpecularSamples', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionSamples', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GISssSamples', 1)    
+        cmds.setAttr('defaultArnoldRenderOptions.GIVolumeSamples', 0)    
+        cmds.setAttr('defaultArnoldRenderOptions.GISpecularDepth', 1)
+        cmds.setAttr('defaultArnoldRenderOptions.GITransmissionDepth', 4)        
+
+        #Low light threshold
+        cmds.setAttr('defaultArnoldRenderOptions.lowLightThreshold', 0.015)
+        print "PRC-LQRender: Your scene has been set up for a LQ Render\n",
+        return 1
+    except:
+        print "PRC-LQRender: Error!\n",
+        return 0
+
+#-----------------------------#
+# SUBMIT TO FARM
+
+def submitToFarm(*args):
+    print "No changes made to your scene. Submitting to the render farm now...\n",
+    try:
+        maya.mel.eval('SubmitJobToDeadline')
+        print "Your scene has been sent to the render farm - thanks for using PreRenderChecks!",
+    except:
+        maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
+
+#-----------------------------#
+# CLOSE PRC WINDOW
+
+def closeWindow(*args):
+    cmds.deleteUI(PRCWindow, window=True)
+    print "PRC: Cancelled - no changes were made to your scene",
+
+#-----------------------------#
+# GET SELECTED ACTIONS
+
+def getSelectedActions(*args):
+    checkFails = []
+    if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
+        #addFilePathMetaData()
+        print "PRC Metadata was selected"
+    if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
+        #hideAssistants()
+        print "PRC Hide Assistants was selected"
+    if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
+        #checkRenderCamera()
+        print "PRC Render Camera was selected"
+    if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
+        #essentialSettings()
+        print "PRC Essential Settings was selected"
+    if cmds.checkBox(PRCTextureCheck, q=1, v=1) == True:
+        #texStatus()
+        print "PRC Texture and File Check was selected"
+    if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
+        if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
+            #setLQ()
+            print "LQ Settings were selected"
+        elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
+            #setHQ()
+            print "HQ Settings were selected"
+        else: # Nothing is selected
+            print "ERROR: Ensure either HQ or LQ is selected!"
+            cmds.confirmDialog(m="Ensure that you pick either HQ or LQ!", t="PRC", b="Silly Me")
+
+
+#-----------------------------#
+# RUN PRC WINDOW
+
+import maya.cmds as cmds
+def HQLQtoggle():
+    if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
+        cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
+    else:                                                        # If un-ticked
+        cmds.radioButtonGrp(HQLQOption, edit=True, enable=False) # Disable
+
+PRCWindow = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
+
+cmds.columnLayout(cw=400)
+cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this 	scene to the Render Farm:\n")
+
+cmds.rowColumnLayout(numberOfColumns = 1, columnWidth=[(1, 300)], rowSpacing=[(1,10)])
+PRCMetadata = cmds.checkBox(label="Add Maya Filepath Metadata", v=1)
+PRCHideAssistants = cmds.checkBox(label="Hide Render Assistants", v=1)
+PRCRenderCamera = cmds.checkBox(label="Ensure Render Camera Selected", v=1)
+PRCEssentialSettings = cmds.checkBox(label="Enable Essential Render Settings", v=1)
+PRCTextureCheck = cmds.checkBox(label="Missing Texture and File Check", v=1)
+enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
+
+cmds.columnLayout(cw=100)
+HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
+
+cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
+PRCCancel = cmds.button(label="Cancel", w=80, command=closeWindow)
+PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarm)
+PRCSubmit = cmds.button(label="Submit >>", w=80, command=getSelectedActions)
+
+cmds.showWindow(PRCWindow)
