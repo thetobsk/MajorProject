@@ -1,6 +1,50 @@
 ## PRC WINDOW ##
 
 import maya.cmds as cmds
+
+def submitToFarm(*args):
+    print "No changes made to your scene. Submitting to the render farm now...\n",
+    try:
+        maya.mel.eval('SubmitJobToDeadline')
+        print "Your scene has been sent to the render farm - thanks for using PreRenderChecks!",
+    except:
+        maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
+
+def closeWindow(*args):
+    cmds.deleteUI(PRCWindow, window=True)
+    print "PRC: Cancelled - no changes were made to your scene",
+
+def getSelectedActions(*args):
+    checkFails = []
+    print "Submit button pushed"
+    if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
+        #addFilePathMetaData()
+        print "PRC Metadata was selected"
+    if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
+        #hideAssistants()
+        print "PRC Hide Assistants was selected"
+    if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
+        #checkRenderCamera()
+        print "PRC Render Camera was selected"
+    if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
+        #essentialSettings()
+        print "PRC Essential Settings was selected"
+    if cmds.checkBox(PRCTextureCheck, q=1, v=1) == True:
+        #texStatus()
+        print "PRC Texture and File Check was selected"
+    if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
+        if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
+            #setLQ()
+            print "LQ Settings were selected"
+        elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
+            #setHQ()
+            print "HQ Settings were selected"
+        else: # Nothing is selected
+            print "ERROR: Ensure either HQ or LQ is selected!"
+
+
+############# START HERE #################
+import maya.cmds as cmds
 def HQLQtoggle():
     if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
         cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
@@ -10,23 +54,23 @@ def HQLQtoggle():
 PRCWindow = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
 
 cmds.columnLayout(cw=400)
-cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this scene to the Render Farm:\n")
+cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this 	scene to the Render Farm:\n")
 
 cmds.rowColumnLayout(numberOfColumns = 1, columnWidth=[(1, 300)], rowSpacing=[(1,10)])
-cmds.checkBox(label="Add Maya Filepath Metadata", v=1)
-cmds.checkBox(label="Hide Render Assistants", v=1)
-cmds.checkBox(label="Ensure Render Camera Selected", v=1)
-cmds.checkBox(label="Enable Essential Render Settings", v=1)
-cmds.checkBox(label="Missing Texture and File Check", v=1)
-enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
+PRCMetadata = cmds.checkBox(label="Add Maya Filepath Metadata", v=1)
+PRCHideAssistants = cmds.checkBox(label="Hide Render Assistants", v=1)
+PRCRenderCamera = cmds.checkBox(label="Ensure Render Camera Selected", v=1)
+PRCEssentialSettings = cmds.checkBox(label="Enable Essential Render Settings", v=1)
+PRCTextureCheck = cmds.checkBox(label="Missing Texture and File Check", v=1)
+enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", 			      	onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
 
 cmds.columnLayout(cw=100)
 HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
 
 cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
-cmds.button(label="< Cancel", w=80)
-cmds.button(label="Skip", w=80)
-cmds.button(label="Submit >", w=80)
+PRCCancel = cmds.button(label="< Cancel", w=80, command=closeWindow)
+PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarm)
+PRCSubmit = cmds.button(label="Submit >", w=80, command=getSelectedActions)
 
 cmds.showWindow(PRCWindow)
 
