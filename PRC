@@ -79,10 +79,10 @@ def hideAssistants():
             return 1
         else:
             print "PRC-HideAssistants: No Assistants Found!\n",
-            return 1
+            return "No render assistants could be found in your scene, so nothing has been hidden."
     except:
         print "PRC-HideAssistants: Error!\n",
-        return 0 
+        return "PRC-HideAssistants encountered an error"
 
 #-----------------------------#
 # RENDER CAMERA CHECK
@@ -95,21 +95,18 @@ def checkRenderCamera():
     ll=len(renderableList)
     if ll==0:
         print "PRC-RenderCamera: There is no renderable camera!\n",
-        return 0
+        return "You haven't set any camera to be renderable. Head to the Render Settings and choose which camera you'd like."
     if ll>1:
         print "PRC-RenderCamera: More than one render camera detected!\n",
-        cmds.confirmDialog(m="There is more than one camera selected to render!\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", t="PRC Alert")
-        return 1
+        return "There is more than one camera selected to render! If this is unexpected, cancel the render and try again."
     else: # if ll==1
         camSelect = []
         camSelect = renderableList[0].split("|")
         defaultCamList = ["persp", "top", "front", "side", "back", "right", "left", "bottom"]
         
         for cam in defaultCamList:
-            if cam == camSelect[1]:
-                cmds.confirmDialog(m="Render Camera: " + camSelect[1] + "\nThis looks like one of the default cameras.\nIf this is unexpected, cancel the render and try again.", b="OK", icn="information", ma="center", t="PRC Alert")
-                print "PRC-RenderCamera: Looks like you've got a default camera selected to render:", camSelect[1], "\n",
-                return 1
+            if cam == camSelect[1]: # one of the default cameras
+                return "It looks like you've got one of the default cameras selected to render, double check if this isn't what you expected."
         print "PRC-RenderCamera: Looks good, your selected camera is:", camSelect[1], "\n",
         return 1
 
@@ -221,9 +218,9 @@ def setLQ():
         return 0
 
 #-----------------------------#
-# SUBMIT TO FARM
+# SUBMIT TO FARM AFTER SKIP
 
-def submitToFarm(*args):
+def submitToFarmAfterSkip(*args):
     cmds.deleteUI(PRCWindow, window=True)
     print "No changes made to your scene. Submitting to the render farm now...\n",
     try:
@@ -233,11 +230,31 @@ def submitToFarm(*args):
         maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
 
 #-----------------------------#
-# CLOSE PRC WINDOW
+# SUBMIT TO FARM AFTER FAIL
 
-def closeWindow(*args):
+def submitToFarmAfterFail(*args):
     cmds.deleteUI(PRCWindow, window=True)
-    print "PRC: Cancelled - no changes were made to your scene",
+    print "You got it - submitting to the render farm now...\n",
+    try:
+        maya.mel.eval('SubmitJobToDeadline')
+        print "Your scene has been sent to the render farm - thanks for using PreRenderChecks!",
+    except:
+        maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
+
+
+#-----------------------------#
+# CLOSE MAIN PRC WINDOW
+
+def closeMainWindow(*args):
+    cmds.deleteUI(PRCWindow, window=True)
+    print "PRC: Cancelled - no changes were made to your scene.",
+    
+#-----------------------------#
+# CLOSE AFTER FAIL
+
+def closeAfterFail(*args):
+    cmds.deleteUI(PRCWindow, window=True)
+    print "PRC: Cancelled - see script editor for details of changes made to your scene.",
 
 #-----------------------------#
 # GET SELECTED ACTIONS
@@ -249,10 +266,14 @@ def getSelectedActions(*args):
         addFilePathMetaData()
     if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
         print "PRC Hide Assistants was selected"
-        hideAssistants()
+        hideAssistantsResult = hideAssistants()
+        if hideAssistantsResult != 1:
+            checkFails.append(hideAssistantsResult)
     if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
         print "PRC Render Camera was selected"
-        checkRenderCamera()
+        checkRenderCameraResult = checkRenderCamera()
+        if checkRenderCameraResult != 1:
+            checkFails.append(checkRenderCameraResult)
     if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
         print "PRC Essential Settings was selected"
         essentialSettings()
@@ -270,6 +291,17 @@ def getSelectedActions(*args):
             print "ERROR: Ensure either HQ or LQ is selected!"
             cmds.confirmDialog(m="Ensure that you pick either HQ or LQ!", t="PRC", b="Silly Me")
 
+    #-- CHECK FAILURE HANDLING --# 
+    if len(checkFails)>= 1:
+        errorText = str(checkFails)
+        FailInfo = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
+        cmds.columnLayout(cw=400)
+        cmds.text(l="\nPre-Render Checks returned the following points\nfor your attention. Review them and decide if\nyou want to cancel or go ahead with the render.\n")
+        cmds.textField(h=130, w=300, tx=errorText, ed=False)
+        cmds.rowColumnLayout(numberOfColumns = 2, columnWidth = [(1,90),(2,90)], cs=[(1,0),(2,10)])
+        FailCancel = cmds.button(label="Cancel", w=80, command=closeAfterFail)
+        FailContinue = cmds.button(label="Submit to Farm", w=80, command=submitToFarmAfterFail)
+        cmds.showWindow(FailInfo)
 
 #-----------------------------#
 # RUN PRC WINDOW
@@ -298,8 +330,8 @@ cmds.columnLayout(cw=100)
 HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
 
 cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
-PRCCancel = cmds.button(label="Cancel", w=80, command=closeWindow)
-PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarm)
+PRCCancel = cmds.button(label="Cancel", w=80, command=closeMainWindow)
+PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarmAfterSkip)
 PRCSubmit = cmds.button(label="Submit >>", w=80, command=getSelectedActions)
 
 cmds.showWindow(PRCWindow)
