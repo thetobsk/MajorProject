@@ -106,6 +106,7 @@ def checkRenderCamera():
         
         for cam in defaultCamList:
             if cam == camSelect[1]: # one of the default cameras
+                print "The '%s' camera is selected to render. Double check this is correct before proceeding!" % cam,
                 return "It looks like you've got one of the default cameras selected to render, double check if this isn't what you expected."
         print "PRC-RenderCamera: Looks good, your selected camera is:", camSelect[1], "\n",
         return 1
@@ -123,17 +124,15 @@ def essentialSettings():
         cmds.setAttr("defaultRenderGlobals.putFrameBeforeExt", 1)
         cmds.setAttr("defaultRenderGlobals.extensionPadding", 4)
         cmds.setAttr("defaultRenderGlobals.periodInExt", 1)
-        print "PRC-RenderSettings: Completed\n",
         return 1
     except:
-        print "PRC-RenderSettings: Error!\n",
-        return 0
+        print "There was an error implementing the Essential Render Settings.",
+        return "There was an error implementing the Essential Render Settings."
 
 #-----------------------------#
-# TEXTURE CHECK
+# FILE AND TEXTURE CHECK
 
-def texStatus():
-    import maya.cmds as cmds
+def fileCheck():
     import os
 
     texDirs = []
@@ -141,8 +140,8 @@ def texStatus():
     fileList = cmds.ls(type = "file")
     
     if len(fileList) == 0:
-        print "FILE-CHECK-ERROR: No files found linked to this scene!",
-        return 0
+        print "It doesn't look like there are any files or textures linked to your scene!",
+        return "It doesn't look like there are any files or textures linked to your scene!"
     else:
         print "Details of the files linked to this scene:\n",
         for f in fileList:
@@ -151,13 +150,17 @@ def texStatus():
             print "- " + fPath
             
             if not os.path.exists(fPath):
-                fileError.append(f)
+                fileError.append(fPath)
                 
-    if not len(fileError) == 0:
+    if len(fileError) != 0: # If some file paths have errors
         print "\nSome of your files have errors!"
         for n in fileError:
             print "- " + n
-            cmds.select(n, add = True)
+        return "Some of the files linked to this scene don't exist or have been moved. Check the script editor for more details!"
+    
+    else: # All the file paths are correct
+        print "All the files in your scene seem to be properly linked!",
+        return 1
 
 #-----------------------------#
 # HQ SETTINGS
@@ -186,8 +189,8 @@ def setHQ():
         print "PRC-HQRender: Your scene has been set up for a HQ Render!\n",
         return 1
     except:
-        print "PRC-HQRender: Error!\n",
-        return 0
+        print "There was an error implementing the HQ Render Settings.",
+        return "There was an error implementing the HQ Render Settings."
 
 #-----------------------------#
 # LQ SETTINGS
@@ -214,14 +217,26 @@ def setLQ():
         print "PRC-LQRender: Your scene has been set up for a LQ Render\n",
         return 1
     except:
-        print "PRC-LQRender: Error!\n",
-        return 0
+        print "There was an error implementing the LQ Render Settings.",
+        return "There was an error implementing the LQ Render Settings."
+
+#-----------------------------#
+# ALL CHECKS PASSED
+
+def checksPassed():
+    cmds.deleteUI(PRCWindow, window=True)
+    print "All the checks came back without any issues! Sending your scene to the farm now...",
+    try:
+        maya.mel.eval('SubmitJobToDeadline')
+        print "Your scene has been sent to the render farm - thanks for using PreRenderChecks!",
+    except:
+        maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
 
 #-----------------------------#
 # SUBMIT TO FARM AFTER SKIP
 
 def submitToFarmAfterSkip(*args):
-    cmds.deleteUI(PRCWindow, window=True)
+    #cmds.deleteUI(FailInfo, window=True)
     print "No changes made to your scene. Submitting to the render farm now...\n",
     try:
         maya.mel.eval('SubmitJobToDeadline')
@@ -233,7 +248,7 @@ def submitToFarmAfterSkip(*args):
 # SUBMIT TO FARM AFTER FAIL
 
 def submitToFarmAfterFail(*args):
-    cmds.deleteUI(PRCWindow, window=True)
+    cmds.deleteUI(FailInfo, window=True)
     print "You got it - submitting to the render farm now...\n",
     try:
         maya.mel.eval('SubmitJobToDeadline')
@@ -241,67 +256,87 @@ def submitToFarmAfterFail(*args):
     except:
         maya.OpenMaya.MGlobal.displayWarning("There was an error sending your scene to the render farm!")
 
-
 #-----------------------------#
 # CLOSE MAIN PRC WINDOW
 
 def closeMainWindow(*args):
     cmds.deleteUI(PRCWindow, window=True)
-    print "PRC: Cancelled - no changes were made to your scene.",
+    print "\nPRC: Cancelled - no changes were made to your scene.",
     
 #-----------------------------#
 # CLOSE AFTER FAIL
 
 def closeAfterFail(*args):
     cmds.deleteUI(PRCWindow, window=True)
-    print "PRC: Cancelled - see script editor for details of changes made to your scene.",
+    print "\nPRC: Cancelled - see script editor for details of any changes made to your scene.",
 
 #-----------------------------#
 # GET SELECTED ACTIONS
 
 def getSelectedActions(*args):
     checkFails = []
+    global checkFails
     if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
-        print "PRC Metadata was selected"
-        addFilePathMetaData()
+        metaDataResult = addFilePathMetaData()
+        if metaDataResult != 1:
+            checkFails.append(metaDataResult)
     if cmds.checkBox(PRCHideAssistants, q=1, v=1) == True:
-        print "PRC Hide Assistants was selected"
         hideAssistantsResult = hideAssistants()
         if hideAssistantsResult != 1:
             checkFails.append(hideAssistantsResult)
     if cmds.checkBox(PRCRenderCamera, q=1, v=1) == True:
-        print "PRC Render Camera was selected"
         checkRenderCameraResult = checkRenderCamera()
         if checkRenderCameraResult != 1:
             checkFails.append(checkRenderCameraResult)
     if cmds.checkBox(PRCEssentialSettings, q=1, v=1) == True:
-        print "PRC Essential Settings was selected"
-        essentialSettings()
+        essentialSettingsResult = essentialSettings()
+        if essentialSettingsResult != 1:
+            checkFails.append(essentialSettingsResult)
     if cmds.checkBox(PRCTextureCheck, q=1, v=1) == True:
-        print "PRC Texture and File Check was selected"
-        #texStatus()
+        fileCheckResult = fileCheck()
+        if fileCheckResult != 1:
+            checkFails.append(fileCheckResult)
     if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
         if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
-            print "LQ Settings were selected"
-            setLQ()
+            setLQResult = setLQ()
+            if setLQResult != 1:
+                checkFails.append(setLQResult)
         elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
-            print "HQ Settings were selected"
-            setHQ()
+            setHQResult = setHQ()
+            if setHQResult != 1:
+                checkFails.append(setHQResult)
         else: # Nothing is selected
             print "ERROR: Ensure either HQ or LQ is selected!"
             cmds.confirmDialog(m="Ensure that you pick either HQ or LQ!", t="PRC", b="Silly Me")
 
-    #-- CHECK FAILURE HANDLING --# 
     if len(checkFails)>= 1:
-        errorText = str(checkFails)
-        FailInfo = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
-        cmds.columnLayout(cw=400)
-        cmds.text(l="\nPre-Render Checks returned the following points\nfor your attention. Review them and decide if\nyou want to cancel or go ahead with the render.\n")
-        cmds.textField(h=130, w=300, tx=errorText, ed=False)
-        cmds.rowColumnLayout(numberOfColumns = 2, columnWidth = [(1,90),(2,90)], cs=[(1,0),(2,10)])
-        FailCancel = cmds.button(label="Cancel", w=80, command=closeAfterFail)
-        FailContinue = cmds.button(label="Submit to Farm", w=80, command=submitToFarmAfterFail)
-        cmds.showWindow(FailInfo)
+        errorHandling()
+        
+    else: # if all checks return successful
+        checksPassed()
+        
+#-----------------------------#
+# ERROR HANDLING
+
+def errorHandling():    
+    errorText = str(checkFails)
+    FailInfo = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
+    cmds.columnLayout(cw=400)
+    cmds.text(l="\nPre-Render Checks returned the following points\nfor your attention. Review them and decide if\nyou want to cancel or go ahead with the render.\n")
+    
+    errorField = cmds.scrollField(h=130, w=300, ed=False, ww=True)
+    errorLength = len(checkFails)
+    errorCounter = 0
+    while errorCounter < errorLength: # prints each error nicely
+        toAdd = checkFails[errorCounter] + "\n\n"
+        cmds.scrollField(errorField, edit=True, ip=0, it=toAdd)
+        errorCounter = errorCounter + 1
+    
+    cmds.rowColumnLayout(numberOfColumns = 2, columnWidth = [(1,90),(2,90)], cs=[(1,0),(2,10)])
+    FailCancel = cmds.button(label="Cancel", w=80, command=closeAfterFail)
+    FailContinue = cmds.button(label="Submit to Farm", w=80, command=submitToFarmAfterFail)
+    
+    cmds.showWindow(FailInfo)
 
 #-----------------------------#
 # RUN PRC WINDOW
