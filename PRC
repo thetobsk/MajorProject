@@ -6,6 +6,18 @@
 ###############################
 ###############################
 
+"""
+
+This Pre-Render Checks tool is designed to be run from the Maya shelf, when a user is ready to render.
+Its aim is to perform a series of checks before the scene is submitted, to ensure that common errors or
+mistakes are not made, which could waste time and resources on the farm.
+
+To use: Run the script from the button on the Maya shelf, choose the checks to perform, and press Start!
+
+Toby Sanderson - Major Project, Visual Effects and Motion Graphics, Brunel University London, 2019
+
+"""
+
 import maya.cmds as cmds
 
 #-----------------------------#
@@ -17,7 +29,7 @@ def addFilePathMetaData():
     # create the metadata to add
     nodeName = "defaultArnoldDriver.customAttributes"
     filePath = cmds.file(query = True, sceneName = True)
-    mayaFile = {"type":"STRING","name":"mayaFile","value": filePath}
+    mayaFile = {"name":"mayaFile", "type":"STRING", "value": filePath}
     
     # if there isn't already this attribute
     def addAttribute(nodeName, value):
@@ -28,61 +40,55 @@ def addFilePathMetaData():
     
     # if the attribute already exists
     def changeAttribute(nodename, value):
-        print "UPDATING ATTRIBUTE!" ## ADDED
         for nodeNameIndex,i in enumerate(pymel.core.getAttr(nodeName)):
             j= i.split(" ")
             if len(j)>1:
                 if j[1] == 'mayaFile':
                     cmds.setAttr(nodeName + '[' + str(nodeNameIndex) + ']', "%s %s %s" % (value["type"],value["name"],value["value"]), type="string")
                     break
-    
+        
     attributes=[]
-    for i in pymel.core.getAttr(nodeName):
-        print i ## ADDED
-        j= i.split(" ")
-        if len(j)>1:
-            attributes.append(j[1])
+    for attr in pymel.core.getAttr(nodeName):
+        niceAttr = attr.split(" ")
+        if len(niceAttr)>1:
+            attributes.append(niceAttr[1])
         
     if "mayaFile" in attributes:
-        print "MAYAFILE ALREADY THERE!" ## ADDED
         try:
             changeAttribute(nodeName, mayaFile)
-            metaDataAction = "PRC-METADATA: MayaFile attribute existed, overwrote with new filename.\n"
+            print "The 'mayaFile' metadata item already existed and has been updated to the latest file path.\n"
             return 1
         except:
-            metaDataAction = "PRC-METADATA: Error!\n"
-            return 0
+            print "There was an error updating the 'mayaFile' metadata item.\n"
+            return "There was an error updating the metadata to include details of the Maya file."
                 
     else:
-        print "MAYAFILE NOT THERE!" ## ADDED
         try:
             addAttribute(nodeName, mayaFile)
-            metaDataAction = "PRC-MayaFile: MayaFile attribute did not exist. Added it for you.\n"
+            print "The 'mayaFile' metadata item has been created and will be included your render.\n"
             return 1
         except:
-            metaDataAction = "PRC-METADATA: Error!\n"
-            return 0            
-     
-    print metaDataAction,
+            print "There was an error creating the 'mayaFile' metadata item.\n"
+            return "There was an error creating the metadata item to include details of the Maya file."
+
     
 #-----------------------------#
 # HIDE ASSISTANTS
 
-def hideAssistants():
-    
-    assistants = cmds.ls("::Assistants", r=True)
+def hideAssistants():   
+    assistants = cmds.ls("::Assistants", r=True) # Objects to be hidden must be called "Assistants" (case sensitive)
     try:
         if assistants:
             cmds.select(assistants)
             cmds.hide(assistants)
-            print "PRC-HideAssistants: Finished hiding the Assistants.\n",
+            print "The render assistants have been hidden and won't appear in your renders.\n",
             return 1
         else:
-            print "PRC-HideAssistants: No Assistants Found!\n",
+            print "No render assistants could be found in your scene, so nothing has been hidden.\n",
             return "No render assistants could be found in your scene, so nothing has been hidden."
     except:
-        print "PRC-HideAssistants: Error!\n",
-        return "PRC-HideAssistants encountered an error"
+        print "The render assistants couldn't be hidden due to an error.\n",
+        return "The render assistants couldn't be hidden due to an error."
 
 #-----------------------------#
 # RENDER CAMERA CHECK
@@ -94,10 +100,10 @@ def checkRenderCamera():
             renderableList.append(x)
     ll=len(renderableList)
     if ll==0:
-        print "PRC-RenderCamera: There is no renderable camera!\n",
+        print "You haven't set any camera to be renderable. Head to the Render Settings and choose which camera you'd like.\n",
         return "You haven't set any camera to be renderable. Head to the Render Settings and choose which camera you'd like."
     if ll>1:
-        print "PRC-RenderCamera: More than one render camera detected!\n",
+        print "There is more than one camera selected to render! If this is unexpected, cancel the render and try again.\n",
         return "There is more than one camera selected to render! If this is unexpected, cancel the render and try again."
     else: # if ll==1
         camSelect = []
@@ -108,7 +114,7 @@ def checkRenderCamera():
             if cam == camSelect[1]: # one of the default cameras
                 print "The '%s' camera is selected to render. Double check this is correct before proceeding!" % cam,
                 return "It looks like you've got one of the default cameras selected to render, double check if this isn't what you expected."
-        print "PRC-RenderCamera: Looks good, your selected camera is:", camSelect[1], "\n",
+        print "Looks good, your selected render camera is:", camSelect[1], "\n",
         return 1
 
 #-----------------------------#
@@ -236,7 +242,7 @@ def checksPassed():
 # SUBMIT TO FARM AFTER SKIP
 
 def submitToFarmAfterSkip(*args):
-    #cmds.deleteUI(FailInfo, window=True)
+    cmds.deleteUI(PRCWindow, window=True)
     print "No changes made to your scene. Submitting to the render farm now...\n",
     try:
         maya.mel.eval('SubmitJobToDeadline')
@@ -267,15 +273,16 @@ def closeMainWindow(*args):
 # CLOSE AFTER FAIL
 
 def closeAfterFail(*args):
-    cmds.deleteUI(PRCWindow, window=True)
+    toClose = "FailInfo"
+    cmds.deleteUI(FailInfo, window=True)
     print "\nPRC: Cancelled - see script editor for details of any changes made to your scene.",
 
 #-----------------------------#
 # GET SELECTED ACTIONS
 
-def getSelectedActions(*args):
-    checkFails = []
+def getSelectedActions(*args):    
     global checkFails
+    checkFails = []
     if cmds.checkBox(PRCMetadata, q=1, v=1) == True:
         metaDataResult = addFilePathMetaData()
         if metaDataResult != 1:
@@ -318,8 +325,9 @@ def getSelectedActions(*args):
 #-----------------------------#
 # ERROR HANDLING
 
-def errorHandling():    
+def errorHandling():      
     errorText = str(checkFails)
+    global FailInfo
     FailInfo = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
     cmds.columnLayout(cw=400)
     cmds.text(l="\nPre-Render Checks returned the following points\nfor your attention. Review them and decide if\nyou want to cancel or go ahead with the render.\n")
@@ -336,12 +344,17 @@ def errorHandling():
     FailCancel = cmds.button(label="Cancel", w=80, command=closeAfterFail)
     FailContinue = cmds.button(label="Submit to Farm", w=80, command=submitToFarmAfterFail)
     
+    cmds.deleteUI(PRCWindow, window=True)
+    
     cmds.showWindow(FailInfo)
+    
+    print "A number of points were returned for your attention. Take a look and decide whether to cancel or continue.",
 
 #-----------------------------#
 # RUN PRC WINDOW
 
-import maya.cmds as cmds
+print "\n\n\n Pre-Render Checks now running!"
+
 def HQLQtoggle():
     if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
         cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
@@ -370,3 +383,5 @@ PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarmAfterSkip)
 PRCSubmit = cmds.button(label="Submit >>", w=80, command=getSelectedActions)
 
 cmds.showWindow(PRCWindow)
+
+print "Choose the pre-render checks you'd like to perform before sending your scene to the farm!",
