@@ -225,6 +225,16 @@ def setLQ():
     except:
         print "There was an error implementing the LQ Render Settings.",
         return "There was an error implementing the LQ Render Settings."
+        
+#-----------------------------#
+# SET TEST RENDER SETTINGS
+
+def setTest():
+    try:
+        print "Needs more work"
+        return 1
+    except:
+        return "Error Message"
 
 #-----------------------------#
 # ALL CHECKS PASSED
@@ -305,16 +315,20 @@ def getSelectedActions(*args):
             checkFails.append(fileCheckResult)
     if cmds.checkBox(enableHQLQ, q=1, v=1) == True:
         if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1:
+            setTestResult = setTest()
+            if setTestResult != 1:
+                checkFails.append(setTestResult)
+        if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
             setLQResult = setLQ()
             if setLQResult != 1:
                 checkFails.append(setLQResult)
-        elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 2:
+        elif cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 3:
             setHQResult = setHQ()
             if setHQResult != 1:
                 checkFails.append(setHQResult)
         else: # Nothing is selected
-            print "ERROR: Ensure either HQ or LQ is selected!"
-            cmds.confirmDialog(m="Ensure that you pick either HQ or LQ!", t="PRC", b="Silly Me")
+            print "ERROR: Ensure either Test, HQ or LQ is selected!"
+            cmds.confirmDialog(m="Ensure that you pick either Test, HQ or LQ!", t="PRC", b="Okay")
 
     if len(checkFails)>= 1:
         errorHandling()
@@ -329,10 +343,10 @@ def errorHandling():
     errorText = str(checkFails)
     global FailInfo
     FailInfo = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
-    cmds.columnLayout(cw=400)
+    cmds.columnLayout(cw=400, cal="center")
     cmds.text(l="\nPre-Render Checks returned the following points\nfor your attention. Review them and decide if\nyou want to cancel or go ahead with the render.\n")
     
-    errorField = cmds.scrollField(h=130, w=300, ed=False, ww=True)
+    errorField = cmds.scrollField(h=250, w=300, ed=False, ww=True)
     errorLength = len(checkFails)
     errorCounter = 0
     while errorCounter < errorLength: # prints each error nicely
@@ -340,9 +354,14 @@ def errorHandling():
         cmds.scrollField(errorField, edit=True, ip=0, it=toAdd)
         errorCounter = errorCounter + 1
     
-    cmds.rowColumnLayout(numberOfColumns = 2, columnWidth = [(1,90),(2,90)], cs=[(1,0),(2,10)])
+    cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,60),(2,120),(3,90)], cs=[(1,0),(2,10),(3,10)], cal=[2,"center"])
     FailCancel = cmds.button(label="Cancel", w=80, command=closeAfterFail)
+    startFrame = str(int(cmds.getAttr("defaultRenderGlobals.startFrame")))
+    endFrame = str(int(cmds.getAttr("defaultRenderGlobals.endFrame")))
+    startEnd = "Frames: " + startFrame + "-" + endFrame
+    cmds.text(startEnd)
     FailContinue = cmds.button(label="Submit to Farm", w=80, command=submitToFarmAfterFail)
+
     
     cmds.deleteUI(PRCWindow, window=True)
     
@@ -360,10 +379,38 @@ def HQLQtoggle():
         cmds.radioButtonGrp(HQLQOption, edit=True, enable=True)  # Enable
     else:                                                        # If un-ticked
         cmds.radioButtonGrp(HQLQOption, edit=True, enable=False) # Disable
+        
+def changeToTest():
+    if cmds.radioButtonGrp(HQLQOption, q=1, sl=1): # if the "Test" option is picked
+        renderFrames = []
+        startFrame = int(cmds.getAttr("defaultRenderGlobals.startFrame"))
+        endFrame = int(cmds.getAttr("defaultRenderGlobals.endFrame"))
+        frameRange = (endFrame - startFrame) + 1
+        if frameRange <= 20:
+            renderFrames.append(startFrame)
+            renderFrames.append(endFrame)
+            renderList = "Frames to Render: ", startFrame, endFrame
+        else: # range is longer than 20 frames
+            secondFrame = (int(frameRange/3))
+            thirdFrame = (int((frameRange/3)*2))
+            renderList = "Frames to Render: ", startFrame, secondFrame, thirdFrame, endFrame
+        renderListToPrint = ''.join(str(renderList))
+        frameRangePrint = cmds.text("FrameRange", edit=True, l=renderListToPrint)
+        
+def changeBackToRange(): # if the "Test" option is de-selected
+    if cmds.getAttr("defaultRenderGlobals.animation") == 1:
+        startFrame = str(int(cmds.getAttr("defaultRenderGlobals.startFrame")))
+        endFrame = str(int(cmds.getAttr("defaultRenderGlobals.endFrame")))
+        startEnd = "These frames are set to be rendered: " + startFrame + " - " + endFrame
+        cmds.text(" ")
+        frameRangePrint = cmds.text("FrameRange", edit=True, l=startEnd) 
+    else:
+        cmds.text(" ")
+        frameRangePrint = cmds.text("FrameRange", edit=True, l="Only a single frame is set to render!")
 
 PRCWindow = cmds.window(mxb= False, mnb=False, rtf=True, title="Pre-Render Checks")
 
-cmds.columnLayout(cw=400)
+cmds.columnLayout(cw=400, cal="center")
 cmds.text(l="\nSelect the checks you'd like to perform before\nsubmitting this 	scene to the Render Farm:\n")
 
 cmds.rowColumnLayout(numberOfColumns = 1, columnWidth=[(1, 300)], rowSpacing=[(1,10)])
@@ -374,9 +421,18 @@ PRCEssentialSettings = cmds.checkBox(label="Enable Essential Render Settings", v
 PRCTextureCheck = cmds.checkBox(label="Missing Texture and File Check", v=1)
 enableHQLQ = cmds.checkBox(label="Enable Recommended HQ/LQ Settings...", onCommand= "HQLQtoggle()", offCommand= "HQLQtoggle()")
 
-cmds.columnLayout(cw=100)
-HQLQOption = cmds.radioButtonGrp(nrb=2, label1="LQ", label2="HQ", enable=False)
-
+cmds.columnLayout(cw=1000)
+HQLQOption = cmds.radioButtonGrp(nrb=3, label1="Test Render", label2="Low Quality", label3="High Quality", enable=False, on1="changeToTest()", of1="changeBackToRange()")
+if cmds.getAttr("defaultRenderGlobals.animation") == 1:
+    startFrame = str(int(cmds.getAttr("defaultRenderGlobals.startFrame")))
+    endFrame = str(int(cmds.getAttr("defaultRenderGlobals.endFrame")))
+    startEnd = "These frames are set to be rendered: " + startFrame + " - " + endFrame
+    cmds.text(" ")
+    frameRangePrint = cmds.text("FrameRange", l=startEnd) 
+else:
+    cmds.text(" ")
+    frameRangePrint = cmds.text("FrameRange", l="Only a single frame is set to render!")
+cmds.text(" ")
 cmds.rowColumnLayout(numberOfColumns = 3, columnWidth = [(1,90),(2,90),(3,90)], cs=[(1,0),(2,10),(3,10)])
 PRCCancel = cmds.button(label="Cancel", w=80, command=closeMainWindow)
 PRCSkip = cmds.button(label="Skip", w=80, command=submitToFarmAfterSkip)
