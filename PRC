@@ -28,6 +28,10 @@ def PreRenderChecks():
     def addFilePathMetaData():
         import pymel
         
+        #change to Arnold
+        cmds.setAttr("defaultRenderGlobals.currentRenderer", "arnold", type="string")
+
+        
         # create the metadata to add
         nodeName = "defaultArnoldDriver.customAttributes"
         filePath = cmds.file(query = True, sceneName = True)
@@ -395,6 +399,7 @@ def PreRenderChecks():
     
     print "\n\n\n Pre-Render Checks now running!"
     
+    global HQLQtoggle
     def HQLQtoggle():
         if cmds.checkBox(enableHQLQ, q=True, v=True) == True:        # If ticked
             changeToTest()                                           # Do this, then
@@ -403,6 +408,7 @@ def PreRenderChecks():
             changeBackToRange()                                      # Do this, then
             cmds.radioButtonGrp(HQLQOption, edit=True, enable=False) # Disable
             
+    global changeToTest    
     def changeToTest():
         if cmds.radioButtonGrp(HQLQOption, q=1, sl=1) == 1: # if the "Test" option is picked
             renderFrames = []
@@ -422,6 +428,7 @@ def PreRenderChecks():
                 renderPrint = "Frames to Render: " + listJoin
             frameRangePrint = cmds.text("FrameRange", edit=True, l=renderPrint)
             
+    global changeBackToRange
     def changeBackToRange(): # when the "Test" option is de-selected
         if cmds.getAttr("defaultRenderGlobals.animation") == 1:
             startFrame = str(int(cmds.getAttr("defaultRenderGlobals.startFrame")))
